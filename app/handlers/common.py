@@ -13,7 +13,6 @@ from aiogram.types import Message
 from app.keyboards.main_menu import (
     BTN_COMPATIBILITY,
     BTN_HELP,
-    BTN_NUMEROLOGY,
     BTN_PROFILE,
     BTN_TAROT,
     build_main_menu,
@@ -84,8 +83,8 @@ async def menu_profile(
     await cmd_profile(message, state=state, user=user)
 
 
-# Кнопки, фичи под которыми появятся в ЭТАПАХ 6–8 — отвечаем «скоро».
-# BTN_FORECAST подхватывается роутером `forecast` раньше — сюда не попадает.
+# Кнопки, фичи под которыми появятся в ЭТАПАХ 7–8 — отвечаем «скоро».
+# BTN_FORECAST / BTN_NUMEROLOGY обслуживаются своими роутерами раньше.
 _COMING_SOON = {
     BTN_TAROT: (
         "🃏 Колода пока тасуется. Скоро смогу разложить три карты — прошлое, "
@@ -94,10 +93,6 @@ _COMING_SOON = {
     BTN_COMPATIBILITY: (
         "💞 Анализ совместимости двух дат рождения уже на подходе. "
         "Подготовь имя и дату того, кто тебе важен."
-    ),
-    BTN_NUMEROLOGY: (
-        "🧮 Числа судьбы и личности рассчитаются автоматически — нужна только "
-        "твоя дата рождения через /profile."
     ),
 }
 
