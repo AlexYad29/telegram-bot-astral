@@ -11,6 +11,7 @@ from app.handlers.errors import router as errors_router
 from app.handlers.forecast import router as forecast_router
 from app.handlers.numerology import router as numerology_router
 from app.handlers.profile import router as profile_router
+from app.handlers.tarot import router as tarot_router
 
 
 def test_main_router_wires_all_subrouters() -> None:
@@ -24,7 +25,24 @@ def test_main_router_wires_all_subrouters() -> None:
         "forecast",
         "numerology",
         "compatibility",
+        "tarot",
     }
+
+
+def test_tarot_router_has_full_flow() -> None:
+    """В ЭТАПЕ 8 tarot-роутер регистрирует команду, кнопку, FSM-шаг и две callback-кнопки."""
+    message_callbacks = {
+        h.callback.__name__ for h in tarot_router.message.handlers
+    }
+    callback_callbacks = {
+        h.callback.__name__ for h in tarot_router.callback_query.handlers
+    }
+    assert {
+        "cmd_tarot",
+        "menu_tarot",
+        "step_tarot_question",
+    }.issubset(message_callbacks)
+    assert {"cb_tarot_draw_no_question", "cb_tarot_cancel"}.issubset(callback_callbacks)
 
 
 def test_compatibility_router_has_full_flow() -> None:

@@ -50,6 +50,7 @@ BOT_COMMANDS: list[BotCommand] = [
     BotCommand(command="forecast", description="Прогноз дня"),
     BotCommand(command="numerology", description="Числа судьбы и личности"),
     BotCommand(command="compatibility", description="Совместимость с партнёром"),
+    BotCommand(command="tarot", description="Расклад на трёх картах Таро"),
     BotCommand(command="help", description="Список команд"),
 ]
 

@@ -13,7 +13,6 @@ from aiogram.types import Message
 from app.keyboards.main_menu import (
     BTN_HELP,
     BTN_PROFILE,
-    BTN_TAROT,
     build_main_menu,
 )
 from app.models.user import User as DbUser
@@ -51,11 +50,11 @@ async def cmd_help(message: Message) -> None:
         "<b>Уже работает:</b>\n"
         "• /start — открыть главное меню\n"
         "• /profile — посмотреть/обновить профиль\n"
-        "• /help — этот список\n\n"
-        "<b>Скоро откроется:</b>\n"
+        "• /forecast — мистический прогноз дня\n"
         "• /numerology — числа судьбы и личности\n"
         "• /compatibility — совместимость с другим человеком\n"
-        "• /tarot — расклад на сегодня и на ближайший путь\n"
+        "• /tarot — расклад «Прошлое — Настоящее — Будущее»\n"
+        "• /help — этот список\n"
     )
     await message.answer(text)
 
@@ -82,15 +81,10 @@ async def menu_profile(
     await cmd_profile(message, state=state, user=user)
 
 
-# Кнопки, фичи под которыми появятся в ЭТАПЕ 8 — отвечаем «скоро».
-# BTN_FORECAST / BTN_NUMEROLOGY / BTN_COMPATIBILITY обслуживаются своими
-# роутерами раньше.
-_COMING_SOON = {
-    BTN_TAROT: (
-        "🃏 Колода пока тасуется. Скоро смогу разложить три карты — прошлое, "
-        "настоящее, будущее."
-    ),
-}
+# Кнопки главного меню, к которым ещё не подключен профильный хендлер.
+# Сейчас все основные фичи закрыты — словарь пустой, fallback оставляем
+# на случай будущих кнопок.
+_COMING_SOON: dict[str, str] = {}
 
 
 @router.message(F.text.in_(set(_COMING_SOON.keys())))

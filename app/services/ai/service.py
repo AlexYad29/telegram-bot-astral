@@ -17,11 +17,13 @@ from app.services.ai.client import AIClient
 from app.services.ai.prompts import (
     SYSTEM_PROMPT,
     CompatibilityContext,
+    TarotCardContext,
     UserContext,
     build_compatibility_prompt,
     build_daily_forecast_prompt,
     build_esoteric_answer_prompt,
     build_mystical_message_prompt,
+    build_tarot_interpretation_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,6 +82,25 @@ class AIService:
             user_prompt=prompt,
         )
 
+    async def generate_tarot_interpretation(
+        self,
+        *,
+        user: DbUser | None,
+        question: str | None,
+        cards: tuple[TarotCardContext, ...],
+    ) -> str:
+        """Сгенерировать связное толкование трёхкарточного расклада."""
+        prompt = build_tarot_interpretation_prompt(
+            user=_ctx_from_user(user),
+            question=question,
+            cards=cards,
+        )
+        return await self._client.complete(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=prompt,
+            max_tokens=600,
+        )
+
     async def generate_compatibility_interpretation(
         self,
         *,
@@ -123,4 +144,4 @@ class CompatibilityScoresProtocol(Protocol):
     karmic_score: int
 
 
-__all__ = ["AIService", "CompatibilityScoresProtocol"]
+__all__ = ["AIService", "CompatibilityScoresProtocol", "TarotCardContext"]

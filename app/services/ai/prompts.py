@@ -141,13 +141,62 @@ def build_compatibility_prompt(ctx: CompatibilityContext) -> str:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class TarotCardContext:
+    """Карта в позиции расклада — для подстановки в промпт."""
+
+    position_label: str
+    name_ru: str
+    name_en: str
+    reversed: bool
+    keywords: tuple[str, ...]
+    meaning_short: str
+
+
+def build_tarot_interpretation_prompt(
+    *,
+    user: UserContext,
+    question: str | None,
+    cards: tuple[TarotCardContext, ...],
+) -> str:
+    """Промпт для AI-толкования трёхкарточного расклада."""
+    question_line = (
+        f"Вопрос собеседника: «{question.strip()}».\n"
+        if question and question.strip()
+        else "Вопрос не сформулирован — дай общее толкование расклада.\n"
+    )
+    cards_block_parts: list[str] = []
+    for card in cards:
+        orient = "в перевёрнутом положении" if card.reversed else "в прямом положении"
+        keywords = ", ".join(card.keywords) if card.keywords else "—"
+        cards_block_parts.append(
+            f"[{card.position_label}] {card.name_ru} ({card.name_en}), {orient}. "
+            f"Ключевые слова: {keywords}. Краткий смысл: {card.meaning_short}"
+        )
+    cards_block = "\n".join(cards_block_parts)
+    return (
+        f"{_user_block(user)}\n"
+        f"{question_line}"
+        "Расклад «Прошлое — Настоящее — Будущее»:\n"
+        f"{cards_block}\n\n"
+        "Истолкуй расклад целиком, как мистический читающий таролог. "
+        "Связь между картами важнее каждой карты по отдельности. "
+        "Учитывай перевёрнутые положения. "
+        "Не повторяй краткие смыслы дословно — переплавь в живой рассказ "
+        "из 3 связных абзацев (прошлое → настоящее → будущее) и одного "
+        "финального предложения-совета."
+    )
+
+
 __all__ = [
     "SYSTEM_PROMPT",
     "CompatibilityContext",
+    "TarotCardContext",
     "Tone",
     "UserContext",
     "build_compatibility_prompt",
     "build_daily_forecast_prompt",
     "build_esoteric_answer_prompt",
     "build_mystical_message_prompt",
+    "build_tarot_interpretation_prompt",
 ]

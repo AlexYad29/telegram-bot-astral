@@ -4,5 +4,6 @@
 
 from app.states.compatibility import CompatibilityStates
 from app.states.profile import ProfileRegistrationStates
+from app.states.tarot import TarotStates
 
-__all__ = ["CompatibilityStates", "ProfileRegistrationStates"]
+__all__ = ["CompatibilityStates", "ProfileRegistrationStates", "TarotStates"]

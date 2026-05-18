@@ -14,6 +14,7 @@ from app.handlers import (
     forecast,
     numerology,
     profile,
+    tarot,
 )
 
 
@@ -26,6 +27,7 @@ def build_main_router() -> Router:
     root.include_router(forecast.router)
     root.include_router(numerology.router)
     root.include_router(compatibility.router)
+    root.include_router(tarot.router)
     root.include_router(common.router)
     root.include_router(profile.router)
     return root
