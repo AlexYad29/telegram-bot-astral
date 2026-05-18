@@ -11,7 +11,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from app.keyboards.main_menu import (
-    BTN_COMPATIBILITY,
     BTN_HELP,
     BTN_PROFILE,
     BTN_TAROT,
@@ -83,16 +82,13 @@ async def menu_profile(
     await cmd_profile(message, state=state, user=user)
 
 
-# Кнопки, фичи под которыми появятся в ЭТАПАХ 7–8 — отвечаем «скоро».
-# BTN_FORECAST / BTN_NUMEROLOGY обслуживаются своими роутерами раньше.
+# Кнопки, фичи под которыми появятся в ЭТАПЕ 8 — отвечаем «скоро».
+# BTN_FORECAST / BTN_NUMEROLOGY / BTN_COMPATIBILITY обслуживаются своими
+# роутерами раньше.
 _COMING_SOON = {
     BTN_TAROT: (
         "🃏 Колода пока тасуется. Скоро смогу разложить три карты — прошлое, "
         "настоящее, будущее."
-    ),
-    BTN_COMPATIBILITY: (
-        "💞 Анализ совместимости двух дат рождения уже на подходе. "
-        "Подготовь имя и дату того, кто тебе важен."
     ),
 }
 

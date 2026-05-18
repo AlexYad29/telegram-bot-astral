@@ -49,6 +49,7 @@ BOT_COMMANDS: list[BotCommand] = [
     BotCommand(command="profile", description="Профиль и дата рождения"),
     BotCommand(command="forecast", description="Прогноз дня"),
     BotCommand(command="numerology", description="Числа судьбы и личности"),
+    BotCommand(command="compatibility", description="Совместимость с партнёром"),
     BotCommand(command="help", description="Список команд"),
 ]
 

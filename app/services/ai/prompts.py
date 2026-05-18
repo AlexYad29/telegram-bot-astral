@@ -102,10 +102,51 @@ def build_esoteric_answer_prompt(question: str, ctx: UserContext) -> str:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class CompatibilityContext:
+    """Данные для интерпретации совместимости.
+
+    Скоры намеренно отделены от их формул — здесь это просто числа 0..100,
+    которые модель должна расшифровать в живой рассказ.
+    """
+
+    user: UserContext
+    partner_name: str
+    partner_birth_date: date
+    user_life_path: int
+    partner_life_path: int
+    emotional_score: int
+    conflict_score: int
+    romance_score: int
+    karmic_score: int
+
+
+def build_compatibility_prompt(ctx: CompatibilityContext) -> str:
+    """Промпт для AI-интерпретации совместимости двух людей."""
+    return (
+        f"{_user_block(ctx.user)} "
+        f"Партнёр: {ctx.partner_name}, дата рождения "
+        f"{ctx.partner_birth_date.isoformat()}.\n"
+        f"Числа жизненного пути: {ctx.user_life_path} (у собеседника) и "
+        f"{ctx.partner_life_path} (у партнёра).\n"
+        f"Расчётные субскоры (0..100):\n"
+        f"- эмоциональная связь: {ctx.emotional_score};\n"
+        f"- конфликтность: {ctx.conflict_score};\n"
+        f"- романтика: {ctx.romance_score};\n"
+        f"- кармическая нить: {ctx.karmic_score}.\n\n"
+        "Расскажи об этой паре как мистический проводник: где их сильная "
+        "связь, где трение, какой у них потенциал и о чём стоит помнить. "
+        "Опирайся на цифры, но не пересчитывай их — переплавь в образы. "
+        "6–9 предложений, разбей мыслью на 2–3 абзаца."
+    )
+
+
 __all__ = [
     "SYSTEM_PROMPT",
+    "CompatibilityContext",
     "Tone",
     "UserContext",
+    "build_compatibility_prompt",
     "build_daily_forecast_prompt",
     "build_esoteric_answer_prompt",
     "build_mystical_message_prompt",

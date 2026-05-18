@@ -7,7 +7,14 @@
 
 from aiogram import Router
 
-from app.handlers import common, errors, forecast, numerology, profile
+from app.handlers import (
+    common,
+    compatibility,
+    errors,
+    forecast,
+    numerology,
+    profile,
+)
 
 
 def build_main_router() -> Router:
@@ -18,6 +25,7 @@ def build_main_router() -> Router:
     # подхватывались ими, а не fallback'ом «coming soon».
     root.include_router(forecast.router)
     root.include_router(numerology.router)
+    root.include_router(compatibility.router)
     root.include_router(common.router)
     root.include_router(profile.router)
     return root

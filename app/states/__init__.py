@@ -2,6 +2,7 @@
 переиспользовать (например, из админских команд) без циклических импортов.
 """
 
+from app.states.compatibility import CompatibilityStates
 from app.states.profile import ProfileRegistrationStates
 
-__all__ = ["ProfileRegistrationStates"]
+__all__ = ["CompatibilityStates", "ProfileRegistrationStates"]

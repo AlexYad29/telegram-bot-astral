@@ -6,6 +6,7 @@ from aiogram import Router
 
 from app.handlers import build_main_router
 from app.handlers.common import router as common_router
+from app.handlers.compatibility import router as compatibility_router
 from app.handlers.errors import router as errors_router
 from app.handlers.forecast import router as forecast_router
 from app.handlers.numerology import router as numerology_router
@@ -16,7 +17,31 @@ def test_main_router_wires_all_subrouters() -> None:
     root = build_main_router()
     assert isinstance(root, Router)
     names = {sub.name for sub in root.sub_routers}
-    assert names == {"errors", "common", "profile", "forecast", "numerology"}
+    assert names == {
+        "errors",
+        "common",
+        "profile",
+        "forecast",
+        "numerology",
+        "compatibility",
+    }
+
+
+def test_compatibility_router_has_full_flow() -> None:
+    """В ЭТАПЕ 7 compatibility-роутер регистрирует команду, кнопку и FSM-шаги."""
+    message_callbacks = {
+        h.callback.__name__ for h in compatibility_router.message.handlers
+    }
+    callback_callbacks = {
+        h.callback.__name__ for h in compatibility_router.callback_query.handlers
+    }
+    assert {
+        "cmd_compatibility",
+        "menu_compatibility",
+        "step_partner_name",
+        "step_partner_birth_date",
+    }.issubset(message_callbacks)
+    assert {"cb_compat_confirm", "cb_compat_cancel"}.issubset(callback_callbacks)
 
 
 def test_forecast_router_has_all_handlers() -> None:
