@@ -1,0 +1,68 @@
+name: astro-bot
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: astro-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-astrobot}
+      POSTGRES_USER: ${POSTGRES_USER:-astrobot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-astrobot}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-astrobot} -d ${POSTGRES_DB:-astrobot}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - astro-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: astro-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    networks:
+      - astro-net
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: astro-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - astro-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  astro-net:
+    driver: bridge
