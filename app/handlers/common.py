@@ -70,12 +70,13 @@ async def menu_help(message: Message) -> None:
 
 
 @router.message(F.text == BTN_PROFILE)
-async def menu_profile(message: Message) -> None:
+async def menu_profile(message: Message, user: DbUser | None = None) -> None:
     # Реальный /profile хэндлер живёт в app.handlers.profile;
-    # тут только эмиссия команды на тот же контекст.
+    # тут только эмиссия команды на тот же контекст. `user` явно прокидываем —
+    # aiogram автоматически передаёт его в kwargs только напрямую в хендлер.
     from app.handlers.profile import cmd_profile
 
-    await cmd_profile(message)
+    await cmd_profile(message, user=user)
 
 
 # Кнопки, фичи под которыми появятся в ЭТАПАХ 5–8 — отвечаем «скоро».
