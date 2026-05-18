@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from app.keyboards.main_menu import (
@@ -70,13 +71,18 @@ async def menu_help(message: Message) -> None:
 
 
 @router.message(F.text == BTN_PROFILE)
-async def menu_profile(message: Message, user: DbUser | None = None) -> None:
+async def menu_profile(
+    message: Message,
+    state: FSMContext,
+    user: DbUser | None = None,
+) -> None:
     # Реальный /profile хэндлер живёт в app.handlers.profile;
-    # тут только эмиссия команды на тот же контекст. `user` явно прокидываем —
-    # aiogram автоматически передаёт его в kwargs только напрямую в хендлер.
+    # тут только эмиссия команды на тот же контекст. `state`/`user` явно
+    # прокидываем — aiogram автоматически передаёт их в kwargs только напрямую
+    # в хендлер.
     from app.handlers.profile import cmd_profile
 
-    await cmd_profile(message, user=user)
+    await cmd_profile(message, state=state, user=user)
 
 
 # Кнопки, фичи под которыми появятся в ЭТАПАХ 5–8 — отвечаем «скоро».

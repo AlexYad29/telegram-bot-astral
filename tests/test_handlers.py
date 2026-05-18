@@ -24,9 +24,32 @@ def test_common_router_has_start_and_help() -> None:
     assert "cmd_help" in callbacks
 
 
-def test_profile_router_has_profile_handler() -> None:
-    callbacks = [h.callback.__name__ for h in profile_router.message.handlers]
-    assert "cmd_profile" in callbacks
+def test_profile_router_has_full_fsm_flow() -> None:
+    """В ЭТАПЕ 4 в `profile` роутере должны быть все хендлеры FSM-регистрации
+    и точечного редактирования."""
+    message_callbacks = {
+        h.callback.__name__ for h in profile_router.message.handlers
+    }
+    callback_callbacks = {
+        h.callback.__name__ for h in profile_router.callback_query.handlers
+    }
+    assert {
+        "cmd_profile",
+        "cmd_edit_profile",
+        "cmd_cancel",
+        "step_name",
+        "step_birth_date",
+    }.issubset(message_callbacks)
+    assert {
+        "cb_start_registration",
+        "step_gender",
+        "step_confirm",
+        "cb_cancel",
+        "cb_edit_name",
+        "cb_edit_dob",
+        "cb_edit_gender",
+        "cb_edit_restart",
+    }.issubset(callback_callbacks)
 
 
 def test_errors_router_has_handler() -> None:
