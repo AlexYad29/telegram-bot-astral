@@ -10,7 +10,8 @@ alembic==1.14.0
 redis==5.2.0
 
 # --- OpenAI ---
-openai==1.54.4
+# >=1.55 — для совместимости с httpx 0.28 (`proxies` kwarg выпилен).
+openai>=1.55,<2
 
 # --- Scheduler ---
 APScheduler==3.10.4

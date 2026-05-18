@@ -7,6 +7,7 @@ from aiogram import Router
 from app.handlers import build_main_router
 from app.handlers.common import router as common_router
 from app.handlers.errors import router as errors_router
+from app.handlers.forecast import router as forecast_router
 from app.handlers.profile import router as profile_router
 
 
@@ -14,7 +15,19 @@ def test_main_router_wires_all_subrouters() -> None:
     root = build_main_router()
     assert isinstance(root, Router)
     names = {sub.name for sub in root.sub_routers}
-    assert names == {"errors", "common", "profile"}
+    assert names == {"errors", "common", "profile", "forecast"}
+
+
+def test_forecast_router_has_all_handlers() -> None:
+    """В ЭТАПЕ 5 forecast-роутер регистрирует команду, кнопку и retry-колбек."""
+    message_callbacks = {
+        h.callback.__name__ for h in forecast_router.message.handlers
+    }
+    callback_callbacks = {
+        h.callback.__name__ for h in forecast_router.callback_query.handlers
+    }
+    assert {"cmd_forecast", "menu_forecast"}.issubset(message_callbacks)
+    assert "cb_forecast_retry" in callback_callbacks
 
 
 def test_common_router_has_start_and_help() -> None:

@@ -22,17 +22,26 @@ from app.config.settings import get_settings
 from app.database.session import dispose_engine, get_sessionmaker
 from app.handlers import build_main_router
 from app.middlewares import (
+    AIServiceMiddleware,
     DbSessionMiddleware,
     LoggingMiddleware,
     ThrottlingMiddleware,
     UserUpsertMiddleware,
 )
+from app.services.ai.client import OpenAIClient
+from app.services.ai.service import AIService
 from app.utils.logging import setup_logging
 
 logger = logging.getLogger(__name__)
 
 
-def register_middlewares(dp: Dispatcher, *, redis, settings) -> None:
+def register_middlewares(
+    dp: Dispatcher,
+    *,
+    redis,
+    settings,
+    ai_service: AIService,
+) -> None:
     """Зарегистрировать middlewares в правильном порядке."""
     sessionmaker = get_sessionmaker()
     dp.update.middleware(LoggingMiddleware())
@@ -45,6 +54,9 @@ def register_middlewares(dp: Dispatcher, *, redis, settings) -> None:
     )
     dp.update.middleware(DbSessionMiddleware(sessionmaker))
     dp.update.middleware(UserUpsertMiddleware())
+    # AIServiceMiddleware подключаем последним — на момент его выполнения уже
+    # есть user/session в data, и хендлеры спокойно получают `ai_service` kwarg.
+    dp.update.middleware(AIServiceMiddleware(ai_service))
 
 
 async def on_startup(bot: Bot) -> None:
@@ -68,7 +80,10 @@ async def main() -> None:
     redis = build_redis(settings)
     dp = build_dispatcher(redis)
 
-    register_middlewares(dp, redis=redis, settings=settings)
+    openai_client = OpenAIClient(settings)
+    ai_service = AIService(openai_client)
+
+    register_middlewares(dp, redis=redis, settings=settings, ai_service=ai_service)
     dp.include_router(build_main_router())
 
     dp.startup.register(on_startup)
@@ -77,6 +92,7 @@ async def main() -> None:
     try:
         await dp.start_polling(bot)
     finally:
+        await openai_client.aclose()
         await redis.aclose()
 
 

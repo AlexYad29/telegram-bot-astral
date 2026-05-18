@@ -12,7 +12,6 @@ from aiogram.types import Message
 
 from app.keyboards.main_menu import (
     BTN_COMPATIBILITY,
-    BTN_FORECAST,
     BTN_HELP,
     BTN_NUMEROLOGY,
     BTN_PROFILE,
@@ -85,11 +84,9 @@ async def menu_profile(
     await cmd_profile(message, state=state, user=user)
 
 
-# Кнопки, фичи под которыми появятся в ЭТАПАХ 5–8 — отвечаем «скоро».
+# Кнопки, фичи под которыми появятся в ЭТАПАХ 6–8 — отвечаем «скоро».
+# BTN_FORECAST подхватывается роутером `forecast` раньше — сюда не попадает.
 _COMING_SOON = {
-    BTN_FORECAST: (
-        "🌙 Прогноз дня скоро откроется. Звёзды ещё выстраиваются в нужный узор."
-    ),
     BTN_TAROT: (
         "🃏 Колода пока тасуется. Скоро смогу разложить три карты — прошлое, "
         "настоящее, будущее."

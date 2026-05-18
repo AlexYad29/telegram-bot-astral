@@ -47,6 +47,7 @@ def build_dispatcher(redis: Redis) -> Dispatcher:
 BOT_COMMANDS: list[BotCommand] = [
     BotCommand(command="start", description="Начать заново и открыть главное меню"),
     BotCommand(command="profile", description="Профиль и дата рождения"),
+    BotCommand(command="forecast", description="Прогноз дня"),
     BotCommand(command="help", description="Список команд"),
 ]
 
