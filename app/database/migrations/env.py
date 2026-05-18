@@ -1,10 +1,9 @@
 """Alembic env.py для async SQLAlchemy.
 
 Подхватывает DSN из `app.config.settings.Settings`, поэтому миграции
-автоматически используют тот же Postgres, что и приложение.
-
-На ЭТАПЕ 1 `target_metadata = None` — реальная metadata появится на ЭТАПЕ 2,
-когда будут объявлены ORM-модели (`app.database.base.Base`).
+автоматически используют тот же Postgres, что и приложение. `target_metadata`
+строится из `Base.metadata`, а импорт `app.models` нужен, чтобы все таблицы
+успели зарегистрироваться в metadata ДО `autogenerate`.
 """
 
 from __future__ import annotations
@@ -17,7 +16,9 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+import app.models  # noqa: F401
 from app.config.settings import get_settings
+from app.database.base import Base
 
 config = context.config
 
@@ -28,10 +29,7 @@ if config.config_file_name is not None:
 settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.postgres_dsn)
 
-# На ЭТАПЕ 2 здесь будет:
-#   from app.database.base import Base
-#   target_metadata = Base.metadata
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
