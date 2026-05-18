@@ -1,1 +1,21 @@
-"""Reply / inline клавиатуры. Содержимое появится на ЭТАПЕ 3-4."""
+"""Reply / inline клавиатуры."""
+
+from app.keyboards.main_menu import (
+    BTN_COMPATIBILITY,
+    BTN_FORECAST,
+    BTN_HELP,
+    BTN_NUMEROLOGY,
+    BTN_PROFILE,
+    BTN_TAROT,
+    build_main_menu,
+)
+
+__all__ = [
+    "BTN_COMPATIBILITY",
+    "BTN_FORECAST",
+    "BTN_HELP",
+    "BTN_NUMEROLOGY",
+    "BTN_PROFILE",
+    "BTN_TAROT",
+    "build_main_menu",
+]
