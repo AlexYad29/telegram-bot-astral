@@ -1,4 +1,4 @@
-"""OpenAI integration (ЭТАП 5).
+"""OpenAI integration.
 
 Пакет состоит из трёх слоёв:
 

@@ -34,7 +34,7 @@ class User(TimestampMixin, Base):
     telegram_last_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     language_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
 
-    # Анкета пользователя (заполняется на этапе 4).
+    # Анкета пользователя — заполняется через FSM-регистрацию /profile.
     full_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[Gender | None] = mapped_column(
