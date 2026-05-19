@@ -1,5 +1,6 @@
-"""aiogram middlewares: DB session, throttling, logging, user upsert, AI service."""
+"""aiogram middlewares: DB session, throttling, logging, user upsert, AI service, admin."""
 
+from app.middlewares.admin_context import AdminContextMiddleware
 from app.middlewares.ai_service import AIServiceMiddleware
 from app.middlewares.db_session import DbSessionMiddleware
 from app.middlewares.logging import LoggingMiddleware
@@ -8,6 +9,7 @@ from app.middlewares.user_upsert import UserUpsertMiddleware
 
 __all__ = [
     "THROTTLE_NOTICE",
+    "AdminContextMiddleware",
     "AIServiceMiddleware",
     "DbSessionMiddleware",
     "LoggingMiddleware",

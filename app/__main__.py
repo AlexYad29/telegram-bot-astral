@@ -22,6 +22,7 @@ from app.config.settings import get_settings
 from app.database.session import dispose_engine, get_sessionmaker
 from app.handlers import build_main_router
 from app.middlewares import (
+    AdminContextMiddleware,
     AIServiceMiddleware,
     DbSessionMiddleware,
     LoggingMiddleware,
@@ -42,6 +43,7 @@ def register_middlewares(
     redis,
     settings,
     ai_service: AIService,
+    scheduler,
 ) -> None:
     """Зарегистрировать middlewares в правильном порядке."""
     sessionmaker = get_sessionmaker()
@@ -58,6 +60,10 @@ def register_middlewares(
     # AIServiceMiddleware подключаем последним — на момент его выполнения уже
     # есть user/session в data, и хендлеры спокойно получают `ai_service` kwarg.
     dp.update.middleware(AIServiceMiddleware(ai_service))
+    # Контекст админ-команд: scheduler + settings.
+    dp.update.middleware(
+        AdminContextMiddleware(scheduler=scheduler, settings=settings)
+    )
 
 
 async def on_startup(bot: Bot) -> None:
@@ -84,9 +90,6 @@ async def main() -> None:
     openai_client = OpenAIClient(settings)
     ai_service = AIService(openai_client)
 
-    register_middlewares(dp, redis=redis, settings=settings, ai_service=ai_service)
-    dp.include_router(build_main_router())
-
     scheduler = build_scheduler(settings)
     register_channel_jobs(
         scheduler,
@@ -95,6 +98,15 @@ async def main() -> None:
         ai_service=ai_service,
         bot=bot,
     )
+
+    register_middlewares(
+        dp,
+        redis=redis,
+        settings=settings,
+        ai_service=ai_service,
+        scheduler=scheduler,
+    )
+    dp.include_router(build_main_router())
 
     async def _start_scheduler(_: Bot) -> None:
         scheduler.start()

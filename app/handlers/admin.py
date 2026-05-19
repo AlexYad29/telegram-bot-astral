@@ -1,0 +1,195 @@
+"""Админ-команды: статистика, ручной автопост, управление планировщиком.
+
+Роутер закрыт `AdminFilter` на уровне `message`/`callback_query` — обычные
+пользователи никогда не увидят эти команды и не смогут их вызвать.
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
+
+from aiogram import Bot, Router
+from aiogram.filters import Command, CommandObject
+from aiogram.types import Message
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.filters import AdminFilter
+from app.models.enums import PostKind
+from app.scheduler import run_channel_post_job
+from app.scheduler.jobs import _day_number_for
+from app.services.admin_stats import AdminStatsService, format_admin_stats
+from app.services.ai.service import AIService
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+    from app.config.settings import Settings
+
+logger = logging.getLogger(__name__)
+
+
+router = Router(name="admin")
+router.message.filter(AdminFilter())
+
+
+# ---------- Описание PostKind для CLI ----------
+_KIND_BY_ALIAS: dict[str, PostKind] = {
+    "forecast": PostKind.DAY_FORECAST,
+    "day_forecast": PostKind.DAY_FORECAST,
+    "number": PostKind.DAY_NUMBER,
+    "day_number": PostKind.DAY_NUMBER,
+    "energy": PostKind.DAY_ENERGY,
+    "day_energy": PostKind.DAY_ENERGY,
+    "warning": PostKind.MYSTICAL_WARNING,
+    "mystical_warning": PostKind.MYSTICAL_WARNING,
+    "viral": PostKind.VIRAL,
+}
+
+
+def _kind_aliases_help() -> str:
+    seen: set[PostKind] = set()
+    parts: list[str] = []
+    for alias, kind in _KIND_BY_ALIAS.items():
+        if kind in seen:
+            continue
+        seen.add(kind)
+        parts.append(f"• <code>{alias}</code> → {kind.value}")
+    return "\n".join(parts)
+
+
+# ---------- /admin ----------
+@router.message(Command("admin"))
+async def cmd_admin(message: Message) -> None:
+    """Главное меню админ-команд (просто help-текст)."""
+    text = (
+        "<b>🛠 Админ-панель</b>\n\n"
+        "Доступные команды:\n"
+        "• /stats — статистика пользователей и автопостов\n"
+        "• /post_now &lt;kind&gt; — вручную создать и отправить пост в канал\n"
+        "• /scheduler — состояние планировщика и список job'ов\n"
+        "• /scheduler_pause — поставить все job'ы на паузу\n"
+        "• /scheduler_resume — снять паузу\n"
+        "\n<b>Виды постов для /post_now</b>:\n"
+        f"{_kind_aliases_help()}"
+    )
+    await message.answer(text)
+
+
+# ---------- /stats ----------
+@router.message(Command("stats"))
+async def cmd_stats(message: Message, session: AsyncSession) -> None:
+    service = AdminStatsService(session)
+    stats = await service.collect()
+    await message.answer(format_admin_stats(stats))
+
+
+# ---------- /post_now <kind> ----------
+@router.message(Command("post_now"))
+async def cmd_post_now(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    ai_service: AIService,
+    bot: Bot,
+    settings: Settings,
+) -> None:
+    """Сгенерировать и отправить пост вручную (без ожидания cron)."""
+    if not command.args:
+        await message.answer(
+            "Использование: <code>/post_now &lt;kind&gt;</code>\n\n"
+            f"{_kind_aliases_help()}"
+        )
+        return
+    alias = command.args.strip().split()[0].lower()
+    kind = _KIND_BY_ALIAS.get(alias)
+    if kind is None:
+        await message.answer(
+            f"Неизвестный тип поста: <code>{alias}</code>.\n\n{_kind_aliases_help()}"
+        )
+        return
+    if not settings.channel_id:
+        await message.answer(
+            "❌ `CHANNEL_ID` не настроен — пост отправлять некуда."
+        )
+        return
+
+    await message.answer(f"⏳ Готовлю пост: <b>{kind.value}</b>…")
+    try:
+        # Используем ту же job-функцию, что и планировщик, — она сама
+        # пишет в БД и шлёт в канал. Сессионмейкер собираем «на лету»,
+        # чтобы внутри job была отдельная транзакция.
+        from app.database.session import get_sessionmaker
+
+        sessionmaker = get_sessionmaker()
+        await run_channel_post_job(
+            kind=kind,
+            sessionmaker=sessionmaker,
+            ai_service=ai_service,
+            bot=bot,
+            channel_id=settings.channel_id,
+            today=date.today(),
+        )
+    except Exception as exc:
+        logger.exception("admin post_now failed kind=%s", kind)
+        await message.answer(f"❌ Не получилось: <code>{type(exc).__name__}</code> — {exc}")
+        return
+    await message.answer("✅ Готово. Пост отправлен и записан в `generated_posts`.")
+
+
+# ---------- /scheduler ----------
+@router.message(Command("scheduler"))
+async def cmd_scheduler(message: Message, scheduler: AsyncIOScheduler) -> None:
+    """Состояние и список job'ов планировщика."""
+    if not scheduler.running:
+        await message.answer("⏸ Планировщик остановлен. /scheduler_resume чтобы запустить.")
+        return
+    jobs = scheduler.get_jobs()
+    if not jobs:
+        await message.answer("✅ Планировщик запущен, но job'ов нет.")
+        return
+    lines = ["<b>⏰ Планировщик запущен</b>", ""]
+    for job in jobs:
+        nxt = job.next_run_time
+        when = nxt.strftime("%Y-%m-%d %H:%M %Z") if nxt else "—"
+        lines.append(f"• <code>{job.id}</code> → следующий запуск: <i>{when}</i>")
+    await message.answer("\n".join(lines))
+
+
+# ---------- /scheduler_pause ----------
+@router.message(Command("scheduler_pause"))
+async def cmd_scheduler_pause(
+    message: Message, scheduler: AsyncIOScheduler
+) -> None:
+    if not scheduler.running:
+        await message.answer("Планировщик и так не запущен.")
+        return
+    scheduler.pause()
+    logger.info("admin %s paused scheduler", message.from_user.id if message.from_user else "?")
+    await message.answer("⏸ Планировщик поставлен на паузу. /scheduler_resume чтобы снять.")
+
+
+# ---------- /scheduler_resume ----------
+@router.message(Command("scheduler_resume"))
+async def cmd_scheduler_resume(
+    message: Message, scheduler: AsyncIOScheduler
+) -> None:
+    if not scheduler.running:
+        scheduler.start()
+    else:
+        scheduler.resume()
+    logger.info("admin %s resumed scheduler", message.from_user.id if message.from_user else "?")
+    await message.answer("▶️ Планировщик снова работает.")
+
+
+# ---------- Утилиты, экспортируемые для тестов ----------
+def _today_utc() -> date:
+    return datetime.now(tz=UTC).date()
+
+
+def _resolve_day_number(today: date) -> int:
+    return _day_number_for(today)
+
+
+__all__ = ["router"]

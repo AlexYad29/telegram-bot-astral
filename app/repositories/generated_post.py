@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from app.models.enums import PostKind, PostStatus
 from app.models.generated_post import GeneratedPost
@@ -33,6 +33,36 @@ class GeneratedPostRepository(BaseRepository[GeneratedPost]):
             status=PostStatus.SCHEDULED,
         )
         return await self.add(post)
+
+    async def count_by_status(self) -> dict[PostStatus, int]:
+        """`{SCHEDULED: 5, SENT: 120, FAILED: 1}` — для админ-статистики."""
+        stmt = select(GeneratedPost.status, func.count(GeneratedPost.id)).group_by(
+            GeneratedPost.status
+        )
+        result = await self.session.execute(stmt)
+        return {status: int(count) for status, count in result.all()}
+
+    async def count_by_kind_since(
+        self, threshold: datetime
+    ) -> dict[PostKind, int]:
+        """Сколько постов каждого вида создано не раньше `threshold`."""
+        stmt = (
+            select(GeneratedPost.kind, func.count(GeneratedPost.id))
+            .where(GeneratedPost.scheduled_for >= threshold)
+            .group_by(GeneratedPost.kind)
+        )
+        result = await self.session.execute(stmt)
+        return {kind: int(count) for kind, count in result.all()}
+
+    async def last_n(self, limit: int = 5) -> Sequence[GeneratedPost]:
+        """Последние `limit` записей по `scheduled_for` — для админ-просмотра."""
+        stmt = (
+            select(GeneratedPost)
+            .order_by(GeneratedPost.scheduled_for.desc())
+            .limit(limit)
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
 
     async def list_due(self, *, now: datetime, limit: int = 50) -> Sequence[GeneratedPost]:
         stmt = (

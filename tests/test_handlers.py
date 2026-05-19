@@ -20,6 +20,7 @@ def test_main_router_wires_all_subrouters() -> None:
     names = {sub.name for sub in root.sub_routers}
     assert names == {
         "errors",
+        "admin",
         "common",
         "profile",
         "forecast",

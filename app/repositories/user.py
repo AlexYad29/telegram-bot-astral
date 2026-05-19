@@ -105,5 +105,32 @@ class UserRepository(BaseRepository[User]):
         result = await self.session.execute(select(func.count(User.id)))
         return int(result.scalar_one())
 
+    async def count_with_profile(self) -> int:
+        """Сколько пользователей завершили регистрацию профиля.
+
+        Завершённым считаем тот, у кого заполнено `birth_date` — это поле
+        проставляется в самом конце FSM-флоу (после имени и пола).
+        """
+        from sqlalchemy import func
+
+        stmt = select(func.count(User.id)).where(User.birth_date.is_not(None))
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one())
+
+    async def count_active_since(self, threshold: datetime) -> int:
+        """Сколько пользователей были активны не раньше `threshold`."""
+        from sqlalchemy import func
+
+        stmt = select(func.count(User.id)).where(User.last_active_at >= threshold)
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one())
+
+    async def count_blocked(self) -> int:
+        from sqlalchemy import func
+
+        stmt = select(func.count(User.id)).where(User.is_blocked.is_(True))
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one())
+
 
 __all__ = ["UserRepository"]
