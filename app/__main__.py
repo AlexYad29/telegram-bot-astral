@@ -28,6 +28,7 @@ from app.middlewares import (
     ThrottlingMiddleware,
     UserUpsertMiddleware,
 )
+from app.scheduler import build_scheduler, register_channel_jobs
 from app.services.ai.client import OpenAIClient
 from app.services.ai.service import AIService
 from app.utils.logging import setup_logging
@@ -86,7 +87,27 @@ async def main() -> None:
     register_middlewares(dp, redis=redis, settings=settings, ai_service=ai_service)
     dp.include_router(build_main_router())
 
+    scheduler = build_scheduler(settings)
+    register_channel_jobs(
+        scheduler,
+        settings=settings,
+        sessionmaker=get_sessionmaker(),
+        ai_service=ai_service,
+        bot=bot,
+    )
+
+    async def _start_scheduler(_: Bot) -> None:
+        scheduler.start()
+        logger.info("scheduler started, jobs=%s", [j.id for j in scheduler.get_jobs()])
+
+    async def _stop_scheduler(_: Bot) -> None:
+        if scheduler.running:
+            scheduler.shutdown(wait=False)
+            logger.info("scheduler stopped")
+
     dp.startup.register(on_startup)
+    dp.startup.register(_start_scheduler)
+    dp.shutdown.register(_stop_scheduler)
     dp.shutdown.register(on_shutdown)
 
     try:

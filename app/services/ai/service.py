@@ -11,7 +11,7 @@ import logging
 from datetime import date
 from typing import Protocol
 
-from app.models.enums import Gender
+from app.models.enums import Gender, PostKind
 from app.models.user import User as DbUser
 from app.services.ai.client import AIClient
 from app.services.ai.prompts import (
@@ -19,6 +19,11 @@ from app.services.ai.prompts import (
     CompatibilityContext,
     TarotCardContext,
     UserContext,
+    build_channel_day_energy_prompt,
+    build_channel_day_forecast_prompt,
+    build_channel_day_number_prompt,
+    build_channel_mystical_warning_prompt,
+    build_channel_viral_prompt,
     build_compatibility_prompt,
     build_daily_forecast_prompt,
     build_esoteric_answer_prompt,
@@ -99,6 +104,44 @@ class AIService:
             system_prompt=SYSTEM_PROMPT,
             user_prompt=prompt,
             max_tokens=600,
+        )
+
+    async def generate_channel_post(
+        self,
+        *,
+        kind: PostKind,
+        today: date,
+        day_number: int | None = None,
+    ) -> str:
+        """Сгенерировать тело автопоста в канал.
+
+        `day_number` обязателен только для `PostKind.DAY_NUMBER` — это уже
+        вычисленное число дня (1..9 или мастер 11/22/33). Если для остальных
+        видов он передан — игнорируется.
+        """
+        if kind is PostKind.DAY_FORECAST:
+            prompt = build_channel_day_forecast_prompt(today=today)
+            max_tokens = 500
+        elif kind is PostKind.DAY_NUMBER:
+            if day_number is None:
+                raise ValueError("day_number обязателен для PostKind.DAY_NUMBER")
+            prompt = build_channel_day_number_prompt(today=today, day_number=day_number)
+            max_tokens = 350
+        elif kind is PostKind.DAY_ENERGY:
+            prompt = build_channel_day_energy_prompt(today=today)
+            max_tokens = 350
+        elif kind is PostKind.MYSTICAL_WARNING:
+            prompt = build_channel_mystical_warning_prompt(today=today)
+            max_tokens = 350
+        elif kind is PostKind.VIRAL:
+            prompt = build_channel_viral_prompt(today=today)
+            max_tokens = 350
+        else:  # pragma: no cover — защита от добавления нового PostKind без правки.
+            raise ValueError(f"неподдерживаемый PostKind: {kind!s}")
+        return await self._client.complete(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=prompt,
+            max_tokens=max_tokens,
         )
 
     async def generate_compatibility_interpretation(
