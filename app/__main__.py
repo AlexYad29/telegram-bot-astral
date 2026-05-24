@@ -108,11 +108,11 @@ async def main() -> None:
     )
     dp.include_router(build_main_router())
 
-    async def _start_scheduler(_: Bot) -> None:
+    async def _start_scheduler(bot: Bot) -> None:
         scheduler.start()
         logger.info("scheduler started, jobs=%s", [j.id for j in scheduler.get_jobs()])
 
-    async def _stop_scheduler(_: Bot) -> None:
+    async def _stop_scheduler(bot: Bot) -> None:
         if scheduler.running:
             scheduler.shutdown(wait=False)
             logger.info("scheduler stopped")

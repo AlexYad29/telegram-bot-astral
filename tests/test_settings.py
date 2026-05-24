@@ -23,7 +23,7 @@ def env() -> dict[str, str]:
 
 def test_settings_load(env: dict[str, str]) -> None:
     with mock.patch.dict(os.environ, env, clear=True):
-        s = Settings()  # type: ignore[call-arg]
+        s = Settings(_env_file=None)  # type: ignore[call-arg]
 
     assert s.bot_token.get_secret_value() == "123:test"
     assert s.openai_api_key.get_secret_value() == "sk-test"

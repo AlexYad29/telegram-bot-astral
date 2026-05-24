@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     postgres_db: str = "astrobot"
     postgres_user: str = "astrobot"
     postgres_password: SecretStr = SecretStr("astrobot")
+    sqlalchemy_echo: bool = False
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
 
     # ---------- Redis ----------
     redis_host: str = "redis"
