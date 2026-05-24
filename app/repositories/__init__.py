@@ -6,17 +6,29 @@
 """
 
 from app.repositories.base import BaseRepository
+from app.repositories.chat_message import ChatMessageRepository
+from app.repositories.chat_summary import ChatSummaryRepository
 from app.repositories.compatibility_check import CompatibilityCheckRepository
 from app.repositories.generated_post import GeneratedPostRepository
+from app.repositories.openai_usage import (
+    OpenAIUsageRepository,
+    TaskBreakdownRow,
+    UsageAggregate,
+)
 from app.repositories.subscription import SubscriptionRepository
 from app.repositories.tarot_history import TarotHistoryRepository
 from app.repositories.user import UserRepository
 
 __all__ = [
     "BaseRepository",
+    "ChatMessageRepository",
+    "ChatSummaryRepository",
     "CompatibilityCheckRepository",
     "GeneratedPostRepository",
+    "OpenAIUsageRepository",
     "SubscriptionRepository",
     "TarotHistoryRepository",
+    "TaskBreakdownRow",
+    "UsageAggregate",
     "UserRepository",
 ]

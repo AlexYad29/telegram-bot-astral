@@ -21,6 +21,8 @@ from app.scheduler import run_channel_post_job
 from app.scheduler.jobs import _day_number_for
 from app.services.admin_stats import AdminStatsService, format_admin_stats
 from app.services.ai.service import AIService
+from app.services.ai.tokens import from_micro_cents
+from app.services.ai.usage import UsageReport, UsageTracker
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -67,6 +69,7 @@ async def cmd_admin(message: Message) -> None:
         "<b>🛠 Админ-панель</b>\n\n"
         "Доступные команды:\n"
         "• /stats — статистика пользователей и автопостов\n"
+        "• /admin_usage — OpenAI usage и стоимость за 24h/7d/30d\n"
         "• /post_now &lt;kind&gt; — вручную создать и отправить пост в канал\n"
         "• /scheduler — состояние планировщика и список job'ов\n"
         "• /scheduler_pause — поставить все job'ы на паузу\n"
@@ -74,6 +77,57 @@ async def cmd_admin(message: Message) -> None:
         "\n<b>Виды постов для /post_now</b>:\n"
         f"{_kind_aliases_help()}"
     )
+    await message.answer(text)
+
+
+# ---------- /admin_usage ----------
+def _format_usage_report(report: UsageReport) -> str:
+    agg = report.aggregate
+    cache_pct = (
+        100.0 * agg.cache_hits / agg.requests if agg.requests else 0.0
+    )
+    cost_usd = from_micro_cents(agg.cost_micro_cents)
+    lines = [
+        f"<b>• Период:</b> последние <code>{report.label}</code>",
+        f"  вызовов: <code>{agg.requests}</code> "
+        f"(cache hits <code>{agg.cache_hits}</code>, {cache_pct:.0f}%)",
+        f"  prompt/compl/total: <code>{agg.prompt_tokens}</code> / "
+        f"<code>{agg.completion_tokens}</code> / <code>{agg.total_tokens}</code>",
+        f"  стоимость: <b>${cost_usd:.4f}</b>",
+    ]
+    if report.by_task:
+        lines.append("  биллинг по задачам (топ-3 по total_tokens):")
+        top = sorted(
+            report.by_task, key=lambda r: r.total_tokens, reverse=True
+        )[:3]
+        for row in top:
+            row_cost = from_micro_cents(row.cost_micro_cents)
+            lines.append(
+                f"    — <code>{row.task}</code>: "
+                f"req <code>{row.requests}</code>, "
+                f"tokens <code>{row.total_tokens}</code>, "
+                f"$<code>{row_cost:.4f}</code>"
+            )
+    return "\n".join(lines)
+
+
+@router.message(Command("admin_usage"))
+async def cmd_admin_usage(
+    message: Message,
+    usage_tracker: UsageTracker,
+) -> None:
+    """OpenAI usage за 24h/7d/30d — токены, cost, cache-hit rate."""
+    try:
+        reports = await usage_tracker.reports_overview()
+    except Exception as exc:
+        logger.exception("admin_usage failed")
+        await message.answer(
+            f"❌ Не получилось собрать usage: "
+            f"<code>{type(exc).__name__}</code> — {exc}"
+        )
+        return
+    blocks = [_format_usage_report(r) for r in reports]
+    text = "<b>📊 OpenAI usage</b>\n\n" + "\n\n".join(blocks)
     await message.answer(text)
 
 

@@ -42,9 +42,64 @@ class Settings(BaseSettings):
 
     # ---------- OpenAI ----------
     openai_api_key: SecretStr
-    openai_model: str = "gpt-4o-mini"
+    # Историческое значение, используется как fallback для старого кода.
+    # Новые вызовы должны проходить через AITask → task_config_for() (см. ai/tasks.py).
+    openai_model: str = "gpt-4.1-mini"
     openai_temperature: float = 0.9
     openai_max_tokens: int = 600
+
+    # ---------- OpenAI: cost optimization (ETAP 12) ----------
+    # Стратификация моделей. Nano — самая дешёвая, для массового/фонового
+    # контента. Mini — для пользовательских запросов и сложных задач.
+    openai_model_nano: str = "gpt-4.1-nano"
+    openai_model_mini: str = "gpt-4.1-mini"
+
+    # Per-task max_tokens — режут размер ответа (а значит и стоимость) на корню.
+    # Каналу хватает 3-5 предложений (~250 токенов), tarot/compat побольше.
+    openai_max_tokens_channel: int = 220
+    openai_max_tokens_forecast: int = 220
+    openai_max_tokens_esoteric: int = 280
+    openai_max_tokens_tarot: int = 500
+    openai_max_tokens_compatibility: int = 500
+    openai_max_tokens_summary: int = 160
+    # Temperature по задачам — каналу нужна вариативность чуть выше.
+    openai_temperature_channel: float = 0.95
+    openai_temperature_personal: float = 0.85
+
+    # Pricing per 1M tokens, USD. По умолчанию — публичные OpenAI 4.1-rates
+    # (на момент конфигурации). Считаем cents-in-DB, но pricing задаём в долларах.
+    openai_price_nano_in_per_1m_usd: float = 0.10
+    openai_price_nano_out_per_1m_usd: float = 0.40
+    openai_price_mini_in_per_1m_usd: float = 0.40
+    openai_price_mini_out_per_1m_usd: float = 1.60
+
+    # Каноничный кодек для подсчёта токенов tiktoken'ом (gpt-4.1* идут через o200k_base).
+    openai_tiktoken_encoding: str = "o200k_base"
+
+    # ---------- Кэш AI-генераций ----------
+    # Глобальный rubber-stamp: можно вырубить весь кэш в проде «одной кнопкой».
+    ai_cache_enabled: bool = True
+    # ~25 часов — суточные посты переживают полночь без regen.
+    ai_cache_ttl_channel_seconds: int = 25 * 3600
+    # Личный дневной прогноз — тоже до конца суток + запас.
+    ai_cache_ttl_daily_forecast_seconds: int = 25 * 3600
+    # Общие эзотерические ответы (вопросы пользователей) — храним неделю.
+    ai_cache_ttl_esoteric_seconds: int = 7 * 24 * 3600
+    # Кэш интерпретаций совместимости — стабильный контент, 30 дней.
+    ai_cache_ttl_compatibility_seconds: int = 30 * 24 * 3600
+
+    # ---------- Sliding window / summary memory ----------
+    # Сколько последних реплик пихаем в prompt (sliding window).
+    ai_history_window_size: int = 4
+    # При каком количестве сообщений запускаем суммаризацию.
+    ai_summary_trigger_messages: int = 20
+    # Целевой объём хранимого summary (в символах, ~> токенах).
+    ai_summary_max_chars: int = 600
+
+    # ---------- AI request throttling ----------
+    # Отдельный лимит на дорогие AI-команды (на пользователя).
+    ai_throttle_seconds: float = 2.0
+    ai_throttle_max_per_minute: int = 6
 
     # ---------- PostgreSQL ----------
     postgres_host: str = "postgres"
