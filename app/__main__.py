@@ -23,6 +23,7 @@ from app.database.session import dispose_engine, get_sessionmaker
 from app.handlers import build_main_router
 from app.middlewares import (
     AdminContextMiddleware,
+    AIRequestThrottle,
     AIServiceMiddleware,
     DbSessionMiddleware,
     LoggingMiddleware,
@@ -30,8 +31,10 @@ from app.middlewares import (
     UserUpsertMiddleware,
 )
 from app.scheduler import build_scheduler, register_channel_jobs
+from app.services.ai.cache import AICache
 from app.services.ai.client import OpenAIClient
 from app.services.ai.service import AIService
+from app.services.ai.usage import UsageTracker
 from app.utils.logging import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -43,6 +46,7 @@ def register_middlewares(
     redis,
     settings,
     ai_service: AIService,
+    usage_tracker: UsageTracker,
     scheduler,
 ) -> None:
     """Зарегистрировать middlewares в правильном порядке."""
@@ -55,11 +59,22 @@ def register_middlewares(
             max_per_minute=settings.rate_limit_messages_per_minute,
         )
     )
+    # AI-throttle — отдельный лимит на дорогие AI-команды, применяется до DB-session,
+    # чтобы отбросить переборщиков раньше самых дорогих вызовов.
+    dp.update.middleware(
+        AIRequestThrottle(
+            redis,
+            max_per_minute=settings.ai_throttle_max_per_minute,
+            min_interval_seconds=settings.ai_throttle_seconds,
+        )
+    )
     dp.update.middleware(DbSessionMiddleware(sessionmaker))
     dp.update.middleware(UserUpsertMiddleware())
     # AIServiceMiddleware подключаем последним — на момент его выполнения уже
     # есть user/session в data, и хендлеры спокойно получают `ai_service` kwarg.
     dp.update.middleware(AIServiceMiddleware(ai_service))
+    # UsageTracker доступен хендлерам как `usage_tracker` (нужен для /admin_usage).
+    dp["usage_tracker"] = usage_tracker
     # Контекст админ-команд: scheduler + settings.
     dp.update.middleware(
         AdminContextMiddleware(scheduler=scheduler, settings=settings)
@@ -88,7 +103,18 @@ async def main() -> None:
     dp = build_dispatcher(redis)
 
     openai_client = OpenAIClient(settings)
-    ai_service = AIService(openai_client)
+    ai_cache = AICache(redis) if settings.ai_cache_enabled else None
+    usage_tracker = UsageTracker(
+        sessionmaker=get_sessionmaker(),
+        redis=redis,
+        settings=settings,
+    )
+    ai_service = AIService(
+        openai_client,
+        settings=settings,
+        cache=ai_cache,
+        usage_tracker=usage_tracker,
+    )
 
     scheduler = build_scheduler(settings)
     register_channel_jobs(
@@ -104,6 +130,7 @@ async def main() -> None:
         redis=redis,
         settings=settings,
         ai_service=ai_service,
+        usage_tracker=usage_tracker,
         scheduler=scheduler,
     )
     dp.include_router(build_main_router())

@@ -35,6 +35,10 @@ def test_metadata_contains_all_tables() -> None:
         "generated_posts",
         "tarot_history",
         "compatibility_checks",
+        # ETAP 12 — таблицы cost-optimization слоя:
+        "chat_messages",
+        "chat_summaries",
+        "openai_usage",
     }
 
 
