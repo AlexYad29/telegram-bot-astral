@@ -51,6 +51,8 @@ BOT_COMMANDS: list[BotCommand] = [
     BotCommand(command="numerology", description="Числа судьбы и личности"),
     BotCommand(command="compatibility", description="Совместимость с партнёром"),
     BotCommand(command="tarot", description="Расклад на трёх картах Таро"),
+    BotCommand(command="upgrade", description="Открыть Premium — тарифы и оплата"),
+    BotCommand(command="subscription", description="Моя подписка — статус и продление"),
     BotCommand(command="help", description="Список команд"),
 ]
 

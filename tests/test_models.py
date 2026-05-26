@@ -14,6 +14,8 @@ from app.database.base import Base
 from app.models import (
     CompatibilityCheck,
     GeneratedPost,
+    Payment,
+    Referral,
     Subscription,
     TarotHistory,
     User,
@@ -39,15 +41,28 @@ def test_metadata_contains_all_tables() -> None:
         "chat_messages",
         "chat_summaries",
         "openai_usage",
+        # ETAP 13 — таблицы монетизации:
+        "payments",
+        "referrals",
     }
 
 
 def test_user_relationships_are_wired() -> None:
     rels = {r.key: r for r in User.__mapper__.relationships}
-    assert set(rels.keys()) == {"subscriptions", "tarot_history", "compatibility_checks"}
+    assert set(rels.keys()) == {
+        "subscriptions",
+        "tarot_history",
+        "compatibility_checks",
+        "payments",
+        "referrals_made",
+        "referral_source",
+    }
     assert rels["subscriptions"].mapper.class_ is Subscription
     assert rels["tarot_history"].mapper.class_ is TarotHistory
     assert rels["compatibility_checks"].mapper.class_ is CompatibilityCheck
+    assert rels["payments"].mapper.class_ is Payment
+    assert rels["referrals_made"].mapper.class_ is Referral
+    assert rels["referral_source"].mapper.class_ is Referral
 
 
 def test_user_primary_key_is_bigint() -> None:

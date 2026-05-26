@@ -100,6 +100,34 @@ class Settings(BaseSettings):
     # Отдельный лимит на дорогие AI-команды (на пользователя).
     ai_throttle_seconds: float = 2.0
     ai_throttle_max_per_minute: int = 6
+    # Для Premium-юзеров лимиты можно ослабить.
+    ai_throttle_seconds_premium: float = 0.5
+    ai_throttle_max_per_minute_premium: int = 20
+
+    # ---------- Subscriptions / monetization (ETAP 13) ----------
+    # Цены в Telegram Stars (XTR) — встроенный платёжный шлюз Telegram, без KYC.
+    # 1 ⭐ ≈ $0.013 (Telegram payout курс), курс плавающий.
+    subscription_stars_premium_1m: int = 199
+    subscription_stars_premium_3m: int = 499
+    subscription_stars_premium_12m: int = 1499
+    subscription_stars_vip_1m: int = 499
+    # Длительности подписок (в днях).
+    subscription_days_1m: int = 30
+    subscription_days_3m: int = 90
+    subscription_days_12m: int = 365
+    # Grace-period после истечения — фичи ещё доступны, бот напоминает продлить.
+    subscription_grace_days: int = 2
+    # Free-tier daily limits — после превышения отдаём «купи Premium».
+    free_daily_forecasts: int = 1
+    free_daily_tarot: int = 1
+    free_daily_compatibility: int = 1
+    free_daily_numerology: int = 3
+    # Реферальная программа: за каждого приглашённого, который зарегистрировал
+    # профиль (или купил Premium) — обоим выдаём бонусные дни Premium.
+    referral_bonus_days_referrer: int = 7
+    referral_bonus_days_referred: int = 3
+    # Лимит на источник трафика — нельзя приглашать самого себя или
+    # реферить одного юзера дважды (гарантируется FK + unique).
 
     # ---------- PostgreSQL ----------
     postgres_host: str = "postgres"

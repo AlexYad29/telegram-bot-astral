@@ -18,6 +18,8 @@ from app.models.mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.compatibility_check import CompatibilityCheck
+    from app.models.payment import Payment
+    from app.models.referral import Referral
     from app.models.subscription import Subscription
     from app.models.tarot_history import TarotHistory
 
@@ -67,6 +69,24 @@ class User(TimestampMixin, Base):
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="raise",
+    )
+    payments: Mapped[list[Payment]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="raise",
+    )
+    referrals_made: Mapped[list[Referral]] = relationship(
+        foreign_keys="Referral.referrer_user_id",
+        back_populates="referrer",
+        cascade="all, delete-orphan",
+        lazy="raise",
+    )
+    referral_source: Mapped[Referral | None] = relationship(
+        foreign_keys="Referral.referred_user_id",
+        back_populates="referred",
+        cascade="all, delete-orphan",
+        lazy="raise",
+        uselist=False,
     )
 
     def __repr__(self) -> str:

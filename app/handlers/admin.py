@@ -16,13 +16,17 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.filters import AdminFilter
-from app.models.enums import PostKind
+from app.models.enums import PostKind, SubscriptionPlan
+from app.repositories.payment import PaymentRepository
+from app.repositories.referral import ReferralRepository
+from app.repositories.subscription import SubscriptionRepository
 from app.scheduler import run_channel_post_job
 from app.scheduler.jobs import _day_number_for
 from app.services.admin_stats import AdminStatsService, format_admin_stats
 from app.services.ai.service import AIService
 from app.services.ai.tokens import from_micro_cents
 from app.services.ai.usage import UsageReport, UsageTracker
+from app.services.subscription import SubscriptionService
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -235,6 +239,132 @@ async def cmd_scheduler_resume(
         scheduler.resume()
     logger.info("admin %s resumed scheduler", message.from_user.id if message.from_user else "?")
     await message.answer("▶️ Планировщик снова работает.")
+
+
+# ---------- /grant_premium <user_id> <days> ----------
+@router.message(Command("grant_premium"))
+async def cmd_grant_premium(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    settings: Settings,
+) -> None:
+    """Admin: выдать Premium пользователю."""
+    if not command.args:
+        await message.answer(
+            "Использование: <code>/grant_premium &lt;user_id&gt; &lt;days&gt;</code>"
+        )
+        return
+    parts = command.args.strip().split()
+    if len(parts) < 2:
+        await message.answer("Нужно два аргумента: <code>/grant_premium &lt;user_id&gt; &lt;days&gt;</code>")
+        return
+    try:
+        target_user_id = int(parts[0])
+        days = int(parts[1])
+    except ValueError:
+        await message.answer("❓ user_id и days должны быть целыми числами.")
+        return
+    if days <= 0 or days > 3650:
+        await message.answer("❓ days должен быть от 1 до 3650.")
+        return
+
+    svc = SubscriptionService(
+        settings=settings,
+        subscription_repo=SubscriptionRepository(session),
+        payment_repo=PaymentRepository(session),
+        referral_repo=ReferralRepository(session),
+    )
+    sub = await svc.grant_manual(user_id=target_user_id, days=days)
+    logger.info(
+        "admin %s granted premium %dd to user %s",
+        message.from_user.id if message.from_user else "?",
+        days,
+        target_user_id,
+    )
+    expires = sub.expires_at.strftime("%Y-%m-%d") if sub.expires_at else "бессрочно"
+    await message.answer(
+        f"✅ Premium выдан пользователю <code>{target_user_id}</code> "
+        f"на <b>{days}</b> дней (до {expires})."
+    )
+
+
+# ---------- /revoke_premium <user_id> ----------
+@router.message(Command("revoke_premium"))
+async def cmd_revoke_premium(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    settings: Settings,
+) -> None:
+    if not command.args:
+        await message.answer(
+            "Использование: <code>/revoke_premium &lt;user_id&gt;</code>"
+        )
+        return
+    try:
+        target_user_id = int(command.args.strip().split()[0])
+    except ValueError:
+        await message.answer("❓ user_id должен быть числом.")
+        return
+
+    svc = SubscriptionService(
+        settings=settings,
+        subscription_repo=SubscriptionRepository(session),
+        payment_repo=PaymentRepository(session),
+        referral_repo=ReferralRepository(session),
+    )
+    ok = await svc.revoke(target_user_id)
+    if ok:
+        logger.info(
+            "admin %s revoked premium from user %s",
+            message.from_user.id if message.from_user else "?",
+            target_user_id,
+        )
+        await message.answer(
+            f"❌ Подписка пользователя <code>{target_user_id}</code> отменена."
+        )
+    else:
+        await message.answer(
+            f"❓ У пользователя <code>{target_user_id}</code> нет активной подписки."
+        )
+
+
+# ---------- /subscriptions_stats ----------
+@router.message(Command("subscriptions_stats"))
+async def cmd_subscriptions_stats(
+    message: Message,
+    session: AsyncSession,
+    settings: Settings,
+) -> None:
+    sub_repo = SubscriptionRepository(session)
+    pay_repo = PaymentRepository(session)
+    ref_repo = ReferralRepository(session)
+
+    active = await sub_repo.count_active()
+    by_plan: dict[str, int] = {}
+    for plan in (SubscriptionPlan.PREMIUM, SubscriptionPlan.VIP, SubscriptionPlan.LIFETIME):
+        cnt = await sub_repo.count_active_by_plan(plan)
+        if cnt:
+            by_plan[plan.value] = cnt
+    paid_count = await pay_repo.count_paid()
+    paid_7d = await pay_repo.count_paid_last_days(7)
+    revenue = await pay_repo.aggregate_revenue()
+    total_refs = await ref_repo.total()
+
+    lines = [
+        "<b>⭐ Статистика подписок</b>",
+        "",
+        f"Активных подписок: <b>{active}</b>",
+    ]
+    for plan_name, cnt in by_plan.items():
+        lines.append(f"  • {plan_name}: {cnt}")
+    lines.append(f"\nОплат всего: <b>{paid_count}</b> (за 7д: {paid_7d})")
+    if revenue:
+        for currency, total in revenue.items():
+            lines.append(f"  • {currency}: <code>{total}</code>")
+    lines.append(f"\nРефералов: <b>{total_refs}</b>")
+    await message.answer("\n".join(lines))
 
 
 # ---------- Утилиты, экспортируемые для тестов ----------

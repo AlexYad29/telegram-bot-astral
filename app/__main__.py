@@ -27,6 +27,7 @@ from app.middlewares import (
     AIServiceMiddleware,
     DbSessionMiddleware,
     LoggingMiddleware,
+    SubscriptionMiddleware,
     ThrottlingMiddleware,
     UserUpsertMiddleware,
 )
@@ -66,10 +67,14 @@ def register_middlewares(
             redis,
             max_per_minute=settings.ai_throttle_max_per_minute,
             min_interval_seconds=settings.ai_throttle_seconds,
+            max_per_minute_premium=settings.ai_throttle_max_per_minute * 3,
+            min_interval_seconds_premium=max(0.5, settings.ai_throttle_seconds / 2),
         )
     )
     dp.update.middleware(DbSessionMiddleware(sessionmaker))
     dp.update.middleware(UserUpsertMiddleware())
+    # SubscriptionMiddleware — после user_upsert (нужен user в БД), до AI-service.
+    dp.update.middleware(SubscriptionMiddleware(settings))
     # AIServiceMiddleware подключаем последним — на момент его выполнения уже
     # есть user/session в data, и хендлеры спокойно получают `ai_service` kwarg.
     dp.update.middleware(AIServiceMiddleware(ai_service))

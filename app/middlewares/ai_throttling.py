@@ -84,8 +84,20 @@ def _user_id(event: TelegramObject) -> int | None:
     return user.id if user is not None else None
 
 
+def _is_premium(data: dict[str, Any]) -> bool:
+    """Читаем тариф из data (положено SubscriptionMiddleware)."""
+    status = data.get("subscription")
+    return bool(getattr(status, "is_premium", False))
+
+
 class AIRequestThrottle(BaseMiddleware):
-    """Per-user rate-limit на AI-вызовы (sliding window + cooldown)."""
+    """Per-user rate-limit на AI-вызовы (sliding window + cooldown).
+
+    Поддерживает per-tier лимиты: Free-пользователи режутся сильнее,
+    Premium/VIP — мягче. Тариф читается из `data["subscription"]`
+    (`SubscriptionStatusInfo`), который кладёт `SubscriptionMiddleware`.
+    Если статус не пришёл — считаем юзера Free.
+    """
 
     def __init__(
         self,
@@ -93,10 +105,22 @@ class AIRequestThrottle(BaseMiddleware):
         *,
         max_per_minute: int = 6,
         min_interval_seconds: float = 2.0,
+        max_per_minute_premium: int | None = None,
+        min_interval_seconds_premium: float | None = None,
     ) -> None:
         self._redis = redis
         self._max_per_minute = max(1, int(max_per_minute))
         self._min_interval_ms = int(max(0.0, min_interval_seconds) * 1000)
+        self._max_per_minute_premium = (
+            max(1, int(max_per_minute_premium))
+            if max_per_minute_premium is not None
+            else self._max_per_minute
+        )
+        self._min_interval_ms_premium = (
+            int(max(0.0, min_interval_seconds_premium) * 1000)
+            if min_interval_seconds_premium is not None
+            else self._min_interval_ms
+        )
 
     async def __call__(
         self,
@@ -109,18 +133,38 @@ class AIRequestThrottle(BaseMiddleware):
         user_id = _user_id(event)
         if user_id is None:
             return await handler(event, data)
-        if await self._is_throttled(user_id):
+
+        is_premium = _is_premium(data)
+        max_per_minute = (
+            self._max_per_minute_premium if is_premium else self._max_per_minute
+        )
+        min_interval_ms = (
+            self._min_interval_ms_premium if is_premium else self._min_interval_ms
+        )
+
+        if await self._is_throttled(
+            user_id,
+            max_per_minute=max_per_minute,
+            min_interval_ms=min_interval_ms,
+        ):
             await self._notify(event)
             logger.info(
-                "ai-throttle: user_id=%s blocked (max=%d/min, cd=%dms)",
+                "ai-throttle: user_id=%s blocked (premium=%s max=%d/min cd=%dms)",
                 user_id,
-                self._max_per_minute,
-                self._min_interval_ms,
+                is_premium,
+                max_per_minute,
+                min_interval_ms,
             )
             return None
         return await handler(event, data)
 
-    async def _is_throttled(self, user_id: int) -> bool:
+    async def _is_throttled(
+        self,
+        user_id: int,
+        *,
+        max_per_minute: int,
+        min_interval_ms: int,
+    ) -> bool:
         key = f"{_REDIS_NS}:{user_id}"
         now_ms = int(time.time() * 1000)
         window_start_ms = now_ms - _WINDOW_SECONDS * 1000
@@ -131,15 +175,15 @@ class AIRequestThrottle(BaseMiddleware):
         _, last_items, current_count = await pipe.execute()
 
         # Cooldown между вызовами.
-        if self._min_interval_ms > 0 and last_items:
+        if min_interval_ms > 0 and last_items:
             try:
                 _, last_ts = last_items[0]
-                if now_ms - int(last_ts) < self._min_interval_ms:
+                if now_ms - int(last_ts) < min_interval_ms:
                     return True
             except (TypeError, ValueError):
                 pass
 
-        if current_count >= self._max_per_minute:
+        if current_count >= max_per_minute:
             return True
 
         # Регистрируем текущий вызов. Добавляем uuid-суффикс к member'у, чтобы не

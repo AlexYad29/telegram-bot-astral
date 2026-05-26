@@ -15,6 +15,8 @@ from app.repositories.openai_usage import (
     TaskBreakdownRow,
     UsageAggregate,
 )
+from app.repositories.payment import PaymentRepository
+from app.repositories.referral import ReferralRepository
 from app.repositories.subscription import SubscriptionRepository
 from app.repositories.tarot_history import TarotHistoryRepository
 from app.repositories.user import UserRepository
@@ -26,6 +28,8 @@ __all__ = [
     "CompatibilityCheckRepository",
     "GeneratedPostRepository",
     "OpenAIUsageRepository",
+    "PaymentRepository",
+    "ReferralRepository",
     "SubscriptionRepository",
     "TarotHistoryRepository",
     "TaskBreakdownRow",
