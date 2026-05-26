@@ -15,6 +15,7 @@ from app.handlers import (
     forecast,
     numerology,
     profile,
+    subscription,
     tarot,
 )
 
@@ -26,6 +27,9 @@ def build_main_router() -> Router:
     # Admin-роутер раньше фичей: его фильтр `AdminFilter` пропускает только
     # известных админов, остальные провалятся в публичные хендлеры.
     root.include_router(admin.router)
+    # Subscription-роутер ставим раньше `forecast/tarot/...` — там pre_checkout_query
+    # и successful_payment, их надо ловить до любых текстовых фильтров.
+    root.include_router(subscription.router)
     # Фича-хендлеры подключаем раньше `common`, чтобы кнопки главного меню
     # подхватывались ими, а не fallback'ом «coming soon».
     root.include_router(forecast.router)

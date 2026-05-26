@@ -9,6 +9,8 @@ from app.models.chat_summary import ChatSummary
 from app.models.compatibility_check import CompatibilityCheck
 from app.models.enums import (
     Gender,
+    PaymentProvider,
+    PaymentStatus,
     PostKind,
     PostStatus,
     SubscriptionPlan,
@@ -17,6 +19,8 @@ from app.models.enums import (
 )
 from app.models.generated_post import GeneratedPost
 from app.models.openai_usage import OpenAIUsage
+from app.models.payment import Payment
+from app.models.referral import Referral
 from app.models.subscription import Subscription
 from app.models.tarot_history import TarotHistory
 from app.models.user import User
@@ -29,8 +33,12 @@ __all__ = [
     "Gender",
     "GeneratedPost",
     "OpenAIUsage",
+    "Payment",
+    "PaymentProvider",
+    "PaymentStatus",
     "PostKind",
     "PostStatus",
+    "Referral",
     "Subscription",
     "SubscriptionPlan",
     "SubscriptionStatus",

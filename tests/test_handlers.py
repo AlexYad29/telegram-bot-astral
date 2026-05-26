@@ -27,6 +27,7 @@ def test_main_router_wires_all_subrouters() -> None:
         "numerology",
         "compatibility",
         "tarot",
+        "subscription",
     }
 
 

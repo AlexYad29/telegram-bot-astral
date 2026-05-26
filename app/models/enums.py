@@ -18,10 +18,11 @@ class Gender(StrEnum):
 
 
 class SubscriptionPlan(StrEnum):
-    """Тарифные планы. На MVP — только free, но схема уже готова под платную модель."""
+    """Тарифные планы."""
 
     FREE = "free"
     PREMIUM = "premium"
+    VIP = "vip"
     LIFETIME = "lifetime"
 
 
@@ -29,6 +30,22 @@ class SubscriptionStatus(StrEnum):
     ACTIVE = "active"
     EXPIRED = "expired"
     CANCELED = "canceled"
+
+
+class PaymentProvider(StrEnum):
+    """Платёжный шлюз. На MVP — Telegram Stars (XTR), у остальных — заготовка."""
+
+    TELEGRAM_STARS = "telegram_stars"
+    YOOKASSA = "yookassa"
+    STRIPE = "stripe"
+    MANUAL = "manual"  # ручной grant админом
+
+
+class PaymentStatus(StrEnum):
+    PENDING = "pending"  # invoice выставлен, ждём оплаты
+    PAID = "paid"
+    FAILED = "failed"
+    REFUNDED = "refunded"
 
 
 class PostKind(StrEnum):
@@ -54,6 +71,8 @@ class TarotSpreadKind(StrEnum):
 
 __all__ = [
     "Gender",
+    "PaymentProvider",
+    "PaymentStatus",
     "PostKind",
     "PostStatus",
     "SubscriptionPlan",

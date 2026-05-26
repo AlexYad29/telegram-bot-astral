@@ -17,6 +17,7 @@ from app.models.enums import SubscriptionPlan, SubscriptionStatus
 from app.models.mixins import TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.payment import Payment
     from app.models.user import User
 
 
@@ -52,6 +53,10 @@ class Subscription(TimestampMixin, Base):
     payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="subscriptions")
+    payments: Mapped[list[Payment]] = relationship(
+        back_populates="subscription",
+        lazy="raise",
+    )
 
     def __repr__(self) -> str:
         return (
